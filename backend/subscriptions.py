@@ -1,7 +1,7 @@
 """Subscription connections; credentials remain in the user's Codex installation."""
 PROVIDERS = [
     {"id":"openai","name":"ChatGPT","company":"OpenAI","model":"Codex · подписка ChatGPT","url":"https://chatgpt.com/"},
-    {"id":"claude","name":"Claude","company":"Anthropic","model":"Веб-версия Claude","url":"https://claude.ai/"},
+    {"id":"claude","name":"Claude","company":"Anthropic","model":"Sonnet 5.5 Low · постоянный чат","url":"https://claude.ai/"},
     {"id":"zai","name":"Z.ai","company":"Z.ai","model":"Z.ai · веб-сеанс","url":"https://chat.z.ai/"},
     {"id":"deepseek","name":"DeepSeek","company":"DeepSeek","model":"DeepSeek · веб-сеанс","url":"https://chat.deepseek.com/"},
     {"id":"kimi","name":"Kimi","company":"Moonshot AI","model":"Веб-версия Kimi","url":"https://www.kimi.com/"},
@@ -12,7 +12,7 @@ async def connections(pool):
     result=[]
     for p in PROVIDERS:
         bridge=bridges.get(p['id']);ready=bool(bridge and bridge['fresh'] and bridge['connected'])
-        supported=p['id'] in ('openai','deepseek','zai')
+        supported=p['id'] in ('openai','deepseek','zai','claude')
         result.append({**p,'configured':ready,'connection':'codex' if p['id']=='openai' else 'browser' if supported else 'planned',
             'note':bridge['note'] if bridge and bridge['fresh'] else 'Обработчик не запущен' if supported else 'Автоматическое подключение — следующий этап'})
     return result

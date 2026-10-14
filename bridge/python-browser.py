@@ -10,6 +10,9 @@ os.environ['PORTAL_INTERNAL_URL']='http://127.0.0.1:'+config.get('PORTAL_PORT','
 os.environ['PORTAL_USE_PROXY']='1'
 os.environ['PORTAL_CDP_URL']='http://127.0.0.1:19222'
 os.environ['PORTAL_PROVIDER']=sys.argv[1]
+if sys.argv[1]=='claude':
+    import json
+    os.environ['PORTAL_CLAUDE_CHAT_URL']=json.loads((root/'.sites-runtime/claude-chat.json').read_text(encoding='utf-8-sig'))['url']
 from browser_worker import main
 import asyncio
 asyncio.run(main())

@@ -62,3 +62,7 @@ docker compose exec -T api python -m pytest -q
 node --test bridge/runner.test.mjs
 node node_modules/typescript/bin/tsc --noEmit
 ```
+
+### Claude: один постоянный чат
+
+В обычном Chrome портала войдите в тот же аккаунт, что в Claude Desktop, и откройте уже существующий чат. Сохраните его HTTPS-адрес в локальном `.sites-runtime/claude-chat.json` в формате `{"url":"https://claude.ai/chat/<UUID>"}`. Файл не публикуется. `start-python-bridge.ps1` запустит отдельный обработчик Claude при наличии этой привязки. Он не создаёт диалоги, не затирает черновики и прекращает отправку при изменении адреса. Выбранная в браузере модель сохраняется самим Claude; текущая настройка — Sonnet 5.5 Low. Все вопросы используют историю этого чата.

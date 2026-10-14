@@ -8,7 +8,7 @@ from task_state import finish_task
 from subscriptions import PROVIDERS
 
 router=APIRouter(prefix='/bridge')
-Provider=Literal['openai','deepseek','zai']
+Provider=Literal['openai','deepseek','zai','claude']
 WEB=('deepseek','zai')
 
 class Heartbeat(BaseModel):
@@ -67,7 +67,7 @@ async def update(task_id:UUID,body:Update,request:Request):
     if body.source_url:
         from urllib.parse import urlparse
         parsed=urlparse(body.source_url)
-        domain={'deepseek':'chat.deepseek.com','zai':'chat.z.ai','openai':'chatgpt.com'}[body.provider]
+        domain={'deepseek':'chat.deepseek.com','zai':'chat.z.ai','openai':'chatgpt.com','claude':'claude.ai'}[body.provider]
         if parsed.scheme!='https' or parsed.hostname!=domain:raise HTTPException(400,'Неверная ссылка на диалог')
     pool=request.app.state.pool
     async with pool.acquire() as conn:
