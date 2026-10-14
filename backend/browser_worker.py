@@ -12,16 +12,26 @@ HOME={'deepseek':'https://chat.deepseek.com/','zai':'https://chat.z.ai/'}[PROVID
 RUNNER=str(uuid4())
 BASE=os.getenv('PORTAL_INTERNAL_URL','http://api:8000')
 PROFILE=Path('/profiles')/PROVIDER
+CDP=os.getenv('PORTAL_CDP_URL')
 
 async def main():
-    async with httpx.AsyncClient(base_url=BASE,headers={'X-Portal-Token':os.environ['APP_ACCESS_TOKEN']},timeout=15) as client:
+    header='X-Portal-Bridge' if os.getenv('PORTAL_USE_PROXY') else 'X-Portal-Token'
+    async with httpx.AsyncClient(base_url=BASE,headers={header:os.environ['APP_ACCESS_TOKEN']},timeout=15) as client:
         async def post(route,body):
-            r=await client.post('/bridge/'+route,json=body);r.raise_for_status();return r.json()
+            r=await client.post('bridge/'+route,json=body);r.raise_for_status();return r.json()
         async with async_playwright() as pw:
-            PROFILE.mkdir(parents=True,exist_ok=True)
-            context=await pw.chromium.launch_persistent_context(str(PROFILE),headless=os.getenv('HEADLESS','true')=='true',viewport={'width':1100,'height':800})
-            page=context.pages[0] if context.pages else await context.new_page()
-            await page.goto(HOME,wait_until='domcontentloaded')
+            if CDP:
+                browser=await pw.chromium.connect_over_cdp(CDP)
+                context=browser.contexts[0]
+                from urllib.parse import urlparse
+                page=next((p for p in context.pages if urlparse(p.url).hostname==urlparse(HOME).hostname),None)
+                if page is None:
+                    page=await context.new_page();await page.goto(HOME,wait_until='domcontentloaded')
+            else:
+                PROFILE.mkdir(parents=True,exist_ok=True)
+                context=await pw.chromium.launch_persistent_context(str(PROFILE),headless=os.getenv('HEADLESS','true')=='true',viewport={'width':1100,'height':800})
+                page=context.pages[0] if context.pages else await context.new_page()
+                await page.goto(HOME,wait_until='domcontentloaded')
             while True:
                 try:
                     # Login readiness requires the composer and absence of a login form.
@@ -31,7 +41,8 @@ async def main():
                     if PROVIDER=='zai' and '\nSign in\n' in '\n'+text+'\n':login=True
                     ready=await composer.is_visible() and not login
                     blocked='403 ERROR' in text or 'Request blocked' in text
-                    await post('heartbeat',{'provider':PROVIDER,'connected':ready and not blocked,'note':'Сайт блокирует подключение (403)' if blocked else 'Браузер Docker подключён' if ready else 'Нужен вход в браузере Docker'})
+                    label='Chrome на ноутбуке' if CDP else 'браузер Docker'
+                    await post('heartbeat',{'provider':PROVIDER,'connected':ready and not blocked,'note':'Сайт блокирует подключение (403)' if blocked else label+' подключён' if ready else 'Нужен вход: '+label})
                     if ready:
                         job=await post('claim',{'provider':PROVIDER,'runner_id':RUNNER})
                         if job['task']:await execute(page,job['task'],post)
@@ -48,6 +59,8 @@ async def execute(page,task,post):
     try:
         state=await save()
         if state['cancel_requested']:await save('cancelled');return
+        old_composer=page.locator('textarea').last
+        if await old_composer.is_visible() and await old_composer.input_value():raise RuntimeError('В поле есть черновик. Он сохранён, задача не отправлялась.')
         await page.goto(HOME,wait_until='domcontentloaded')
         if PROVIDER=='deepseek':
             body=(await page.locator('body').inner_text()).lower()
