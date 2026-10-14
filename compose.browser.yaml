@@ -1,0 +1,39 @@
+x-browser: &browser
+  image: multi-agent-portal-browser:2.0.0
+  build: {context: ./backend, dockerfile: Dockerfile.browser}
+  env_file: .env
+  restart: unless-stopped
+  init: true
+  mem_limit: 1g
+  cpus: 0.75
+  pids_limit: 256
+  shm_size: 256m
+  logging:
+    driver: json-file
+    options: {max-size: '10m', max-file: '3'}
+  depends_on: {api: {condition: service_healthy}}
+services:
+  deepseek:
+    <<: *browser
+    environment: {PORTAL_PROVIDER: deepseek}
+    volumes: ['deepseek-profile:/profiles']
+    ports: ['127.0.0.1:19091:7900']
+  zai:
+    <<: *browser
+    environment: {PORTAL_PROVIDER: zai}
+    volumes: ['zai-profile:/profiles']
+    ports: ['127.0.0.1:19092:7900']
+  tunnel:
+    image: cloudflare/cloudflared@sha256:9b49eed8f62806d5d45ddf59ecefb5710429598ea6d3fcccd2af938f621b2b07
+    command: ['tunnel','--no-autoupdate','--url','http://api:8000']
+    profiles: ['share']
+    mem_limit: 128m
+    cpus: 0.25
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options: {max-size: '10m', max-file: '3'}
+    depends_on: {api: {condition: service_healthy}}
+volumes:
+  deepseek-profile:
+  zai-profile:
