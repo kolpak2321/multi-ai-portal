@@ -35,8 +35,7 @@ PORTAL_BACKEND_URL=https://your-backend.example node node_modules/vite/bin/vite.
 ```
 
 Результат `dist/pages` публикуется в ветку `main`, каталог `docs`. В GitHub Pages
-выберите Deploy from a branch → main → /docs. Workflow для пересборки можно
-запустить вручную после настройки переменной `PORTAL_BACKEND_URL`.
+выберите Deploy from a branch → main → /docs. Для смены адреса туннеля пересоберите интерфейс и обновите каталог `docs`.
 GitHub Pages хранит интерфейс. Запросы и история передаются вашему серверу.
 Временный демонстрационный HTTPS-туннель меняет адрес при перезапуске:
 после этого нужно пересобрать интерфейс. Для постоянной эксплуатации нужен

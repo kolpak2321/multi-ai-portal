@@ -26,7 +26,7 @@ function seconds(answer: Answer) { return answer.started_at ? Math.max(0, (new D
 async function api<T>(path: string, options?: RequestInit): Promise<T> {
   const token = typeof window !== 'undefined' ? sessionStorage.getItem('portal:session') : null;
   const response = await fetch(API_BASE + path, {...options,cache:'no-store',headers:{...options?.headers,...(REMOTE && token ? {Authorization:`Bearer ${token}`} : {})}}); const body = await response.json();
-  if(response.status===401 && REMOTE) {sessionStorage.removeItem('portal:session');window.dispatchEvent(new Event('portal:login'));}
+  if(response.status===401 && REMOTE && sessionStorage.getItem('portal:session')===token) {sessionStorage.removeItem('portal:session');window.dispatchEvent(new Event('portal:login'));}
   if (!response.ok) { const detail = (body as { detail?: unknown })?.detail; throw new Error(typeof detail === "string" ? detail : "Проверьте параметры запроса."); }
   return body as T;
 }
@@ -92,7 +92,7 @@ export default function Portal() {
     void init(); return () => { disposed = true; source.current?.close(); };
   }, [refresh, follow, authEpoch]);
   useEffect(()=>{const handler=()=>setNeedsLogin(true);window.addEventListener('portal:login',handler);return()=>window.removeEventListener('portal:login',handler);},[]);
-  useEffect(() => { const timer=setInterval(() => {void api<{providers:Provider[]}>("providers").then(data=>{setProviders(data.providers);setOnline(true);}).catch(()=>setOnline(false));},5000); return () => clearInterval(timer); }, []);
+  useEffect(() => { if(needsLogin)return;const timer=setInterval(() => {void api<{providers:Provider[]}>("providers").then(data=>{setProviders(data.providers);setOnline(true);}).catch(()=>setOnline(false));},5000); return () => clearInterval(timer); }, [needsLogin]);
   useEffect(() => { if (!active(task)) return; const timer = setInterval(() => tick(n => n + 1), 1000); return () => clearInterval(timer); }, [task?.status]);
   useEffect(() => {
     if (!task || !active(task)) return;
@@ -125,7 +125,7 @@ export default function Portal() {
   const filteredHistory = history.filter(h => h.prompt.toLowerCase().includes(search.toLowerCase()));
   if(needsLogin) return <main style={{maxWidth:520,margin:'10vh auto'}}><h1>Multi-Agent Portal</h1><p>Вход в демонстрационный портал · v2.0.0</p><form onSubmit={async e=>{e.preventDefault();setLoginBusy(true);setError('');try{const result=await api<{token:string}>('login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:loginPassword})});sessionStorage.setItem('portal:session',result.token);setLoginPassword('');setNeedsLogin(false);setAuthEpoch(n=>n+1);}catch(e){setError((e as Error).message);}finally{setLoginBusy(false);}}}><label htmlFor="portal-password">Пароль портала</label><input id="portal-password" type="password" autoComplete="current-password" value={loginPassword} onChange={e=>setLoginPassword(e.target.value)} required style={{display:'block',width:'100%',padding:14,margin:'15px 0',background:'#171820',border:'1px solid #444',borderRadius:8}}/><button className="send-button" disabled={loginBusy}>{loginBusy?'Входим…':'Войти'}</button><p role="alert">{error}</p></form></main>;
   return <div className="app-shell">
-    <span style={{position:'fixed',bottom:5,right:12,fontSize:10,color:'#9294a6',zIndex:10}}>v2.0.0 · {REMOTE?'Сервер':'Локально'}</span>
+    <span style={{position:'fixed',bottom:5,right:12,fontSize:10,color:'#9294a6',zIndex:10}}>v2.0.0 · {REMOTE?'Ноутбук':'Локально'}</span>
     {sidebar && <button className="sidebar-overlay" aria-label="Закрыть историю" onClick={() => setSidebar(false)} />}
     <aside className={`sidebar ${sidebar ? "visible" : ""}`}>
       <a className="brand" href={REMOTE?'./':'/'} aria-label="Multi-Agent Portal"><span className="brand-icon"><Layers3 size={21} /></span><span>multi<span className="brand-light">agent</span><span className="brand-tag">WORKSPACE</span></span></a>
