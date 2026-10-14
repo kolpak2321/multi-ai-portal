@@ -13,6 +13,7 @@ RUNNER=str(uuid4())
 BASE=os.getenv('PORTAL_INTERNAL_URL','http://api:8000')
 PROFILE=Path('/profiles')/PROVIDER
 CDP=os.getenv('PORTAL_CDP_URL')
+EXTRACT_MARKDOWN=Path(__file__).with_name('answer_markdown.js').read_text(encoding='utf-8')
 
 async def main():
     header='X-Portal-Bridge' if os.getenv('PORTAL_USE_PROXY') else 'X-Portal-Token'
@@ -75,7 +76,7 @@ async def execute(page,task,post):
             selector='.ds-markdown' if PROVIDER=='deepseek' else '[id="response-content-container"]'
             nodes=page.locator(selector)
             if await nodes.count():
-                candidate=await nodes.last.evaluate("""e=>Array.from(e.querySelectorAll('p,h1,h2,h3,h4,pre,li')).filter(n=>!n.closest('.thinking-chain-container')&&!n.parentElement.closest('li,pre')).map(n=>{const c=n.cloneNode(true);c.querySelectorAll('a[href]').forEach(a=>{const u=a.getAttribute('href');if(/^https?:\\/\\//.test(u))a.textContent='['+a.textContent+']('+u+')';});return c.textContent.trim();}).join('\\n\\n')""") if PROVIDER=='zai' else await nodes.last.inner_text()
+                candidate=await nodes.last.evaluate(EXTRACT_MARKDOWN)
                 if candidate!=last_content:last_content=candidate;stable_since=time.monotonic()
                 content=candidate
             state=await save()

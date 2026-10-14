@@ -16,3 +16,20 @@
 .history-more{border:1px solid #38313f;border-radius:5px;background:#211c29;color:#ad97c6;padding:7px;font-size:10px;margin:8px 0}
 .service-link{display:flex;align-items:center;gap:5px;border:1px solid #393140;border-radius:5px;padding:5px 8px;margin-top:17px;color:#bda7d4;font-size:9px}.markdown a{color:#b6a3ed;text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere}
 @media(max-width:760px){.sidebar{visibility:hidden}.sidebar.visible{visibility:visible}}
+
+/* Shared typography for every model answer and expanded view. */
+.markdown{overflow-wrap:anywhere;line-height:1.75}
+.markdown p{margin:0 0 .85em}.markdown p:last-child{margin-bottom:0}
+.markdown h1,.markdown h2,.markdown h3,.markdown h4,.markdown h5,.markdown h6{font-weight:650;line-height:1.4;margin:1.2em 0 .6em;color:var(--text)}
+.markdown h1{font-size:1.45em}.markdown h2{font-size:1.3em}.markdown h3{font-size:1.15em}.markdown h4{font-size:1.05em}
+.markdown ul,.markdown ol{padding-left:1.5em;margin:.6em 0 1em}.markdown ul{list-style:disc}.markdown ol{list-style:decimal}
+.markdown li{padding-left:.15em;margin:.45em 0}.markdown li>p{margin:.25em 0}.markdown li>ul,.markdown li>ol{margin:.35em 0}
+.markdown strong{font-weight:650;color:var(--text)}.markdown em{font-style:italic}
+.markdown blockquote{border-left:3px solid #786a9a;padding:.25em 1em;margin:1em 0;color:#aaa7bb}
+.markdown pre{overflow-x:auto;white-space:pre;padding:14px;border:1px solid var(--line);border-radius:8px;background:#0c0d12}
+.markdown pre code{white-space:pre;background:none;padding:0}.markdown code{font-family:Consolas,monospace}
+.markdown a{color:#b5a0ff;text-decoration:underline;text-underline-offset:3px}
+.markdown a.citation-link{display:inline-block;font-size:.72em;line-height:1.5;vertical-align:super;min-width:1.5em;text-align:center;padding:0 .35em;margin:0 .15em;border-radius:5px;background:#a58aff22;text-decoration:none;white-space:nowrap}
+.markdown-table{max-width:100%;overflow-x:auto;margin:1em 0}.markdown table{border-collapse:collapse;width:100%;font-size:.95em}.markdown th,.markdown td{border:1px solid #383443;padding:8px 10px;text-align:left}.markdown th{font-weight:600;background:#a58aff12}
+.markdown hr{border:0;border-top:1px solid var(--line);margin:1.3em 0}
+.answer-content .markdown{font-size:12px}.answer-modal .markdown{font-size:15px}.answer-modal .markdown h3{font-size:1.15em}

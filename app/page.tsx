@@ -1,4 +1,5 @@
 "use client";
+import { Markdown } from "./markdown";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { Activity, ArrowDownToLine, ArrowUpRight, Check, Clock3, Copy, History, Layers3, LoaderCircle, Maximize2, MessageSquare, Plus, Search, Send, Settings2, ShieldCheck, Square, Terminal, Trash2, X, Zap } from "lucide-react";
 
@@ -30,21 +31,6 @@ async function api<T>(path: string, options?: RequestInit): Promise<T> {
   if (!response.ok) { const detail = (body as { detail?: unknown })?.detail; throw new Error(typeof detail === "string" ? detail : "Проверьте параметры запроса."); }
   return body as T;
 }
-// React escapes all model text; never execute raw HTML from model answers.
-function Markdown({ text }: { text: string }) {
-  return <div className="markdown">{text.split(/(```[\s\S]*?```)/g).map((segment, i) => {
-    if (segment.startsWith("```")) return <pre key={i}><code>{segment.replace(/^```[^\n]*\n?/, "").replace(/```$/, "")}</code></pre>;
-    return segment.split("\n").map((line, j) => {
-      if (line.startsWith("### ")) return <h4 key={`${i}-${j}`}>{line.slice(4)}</h4>;
-      if (line.startsWith("## ")) return <h3 key={`${i}-${j}`}>{line.slice(3)}</h3>;
-      if (line.startsWith("# ")) return <h3 key={`${i}-${j}`}>{line.slice(2)}</h3>;
-      if (!line.trim()) return <div className="paragraph-gap" key={`${i}-${j}`} />;
-      const inline = line.split(/(\[[^\]]+\]\(https?:\/\/[^)]+\)|\*\*[^*]+\*\*|`[^`]+`)/g).map((part, k) => part.startsWith("[") ? <a key={k} href={part.slice(part.indexOf("](")+2,-1)} target="_blank" rel="noopener noreferrer">{part.slice(1,part.indexOf("]("))}</a> : part.startsWith("**") ? <strong key={k}>{part.slice(2, -2)}</strong> : part.startsWith("`") ? <code key={k}>{part.slice(1, -1)}</code> : part);
-      return <p className={/^[-*] /.test(line) || /^\d+\. /.test(line) ? "list-line" : ""} key={`${i}-${j}`}>{inline}</p>;
-    });
-  })}</div>;
-}
-
 export default function Portal() {
   const [needsLogin,setNeedsLogin]=useState(false),[loginPassword,setLoginPassword]=useState(''),[authEpoch,setAuthEpoch]=useState(0),[loginBusy,setLoginBusy]=useState(false);
   const [providers, setProviders] = useState<Provider[]>(DEFAULTS), [selected, setSelected] = useState<string[]>(["openai"]);
