@@ -10,8 +10,7 @@ $portalProfile=Join-Path $PSScriptRoot '.sites-runtime\chrome-profile'
 if($portalOwner.CommandLine -notlike "*$portalProfile*"){throw 'Порт принадлежит другому браузеру; подключение запрещено.'}
 docker compose -f compose.yaml -f compose.browser.yaml stop deepseek zai
 & (Join-Path $PSScriptRoot 'stop-browser-bridge.ps1')
-$portalProviders=@('deepseek','zai')
-if(Test-Path -LiteralPath '.sites-runtime\claude-chat.json'){$portalProviders+='claude'}
+$portalProviders=@('deepseek','zai','claude','kimi') | Where-Object {Test-Path -LiteralPath ('.sites-runtime\'+$_+'-chat.json')}
 foreach($portalProvider in $portalProviders){
     $portalPidFile=Join-Path $PSScriptRoot ('.sites-runtime\python-'+$portalProvider+'.pid')
     if(Test-Path -LiteralPath $portalPidFile){

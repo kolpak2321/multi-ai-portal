@@ -8,7 +8,7 @@ from task_state import finish_task
 from subscriptions import PROVIDERS
 
 router=APIRouter(prefix='/bridge')
-Provider=Literal['openai','deepseek','zai','claude']
+Provider=Literal['openai','deepseek','zai','claude','kimi']
 WEB=('deepseek','zai')
 
 class Heartbeat(BaseModel):
@@ -27,6 +27,7 @@ class Update(BaseModel):
     status:Literal['running','completed','error','cancelled']='running'
     error:str|None=Field(default=None,max_length=1000)
     source_url:str|None=Field(default=None,max_length=2000)
+    actual_model:str|None=Field(default=None,max_length=200)
 
 class WebRunner(BaseModel):
     runner_id:UUID
@@ -67,7 +68,7 @@ async def update(task_id:UUID,body:Update,request:Request):
     if body.source_url:
         from urllib.parse import urlparse
         parsed=urlparse(body.source_url)
-        domain={'deepseek':'chat.deepseek.com','zai':'chat.z.ai','openai':'chatgpt.com','claude':'claude.ai'}[body.provider]
+        domain={'deepseek':'chat.deepseek.com','zai':'chat.z.ai','openai':'chatgpt.com','claude':'claude.ai','kimi':'www.kimi.com'}[body.provider]
         if parsed.scheme!='https' or parsed.hostname!=domain:raise HTTPException(400,'Неверная ссылка на диалог')
     pool=request.app.state.pool
     async with pool.acquire() as conn:
@@ -82,7 +83,7 @@ async def update(task_id:UUID,body:Update,request:Request):
             await conn.execute('UPDATE tasks SET heartbeat_at=now() WHERE id=$1',task_id)
             await conn.execute('UPDATE subscription_bridges SET seen_at=now() WHERE provider=$1',body.provider)
             status='cancelled' if task['cancel_requested'] and body.status!='running' else body.status
-            model=next(p['model'] for p in PROVIDERS if p['id']==body.provider)
+            model=body.actual_model or next(p['model'] for p in PROVIDERS if p['id']==body.provider)
             await conn.execute("UPDATE answers SET content=$3,status=$4,error=$5,actual_model=$6,finished_at=CASE WHEN $4='running' THEN NULL ELSE now() END WHERE task_id=$1 AND provider=$2",task_id,body.provider,body.content,status,body.error,model)
             if body.source_url:await conn.execute('UPDATE answers SET source_url=$3 WHERE task_id=$1 AND provider=$2',task_id,body.provider,body.source_url)
             await finish_task(conn,task_id)

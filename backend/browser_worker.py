@@ -9,7 +9,7 @@ from fixed_chat import conversation_url,require_bound_chat
 from playwright.async_api import async_playwright
 
 PROVIDER=os.environ['PORTAL_PROVIDER']
-HOME=conversation_url(os.environ['PORTAL_CLAUDE_CHAT_URL']) if PROVIDER=='claude' else {'deepseek':'https://chat.deepseek.com/','zai':'https://chat.z.ai/'}[PROVIDER]
+HOME=conversation_url(os.environ['PORTAL_CHAT_URL'],PROVIDER)
 RUNNER=str(uuid4())
 BASE=os.getenv('PORTAL_INTERNAL_URL','http://api:8000')
 PROFILE=Path('/profiles')/PROVIDER
@@ -32,7 +32,7 @@ async def main():
                 browser=await pw.chromium.connect_over_cdp(CDP)
                 context=browser.contexts[0]
                 from urllib.parse import urlparse
-                page=next((p for p in context.pages if (p.url.split('?')[0]==HOME if PROVIDER=='claude' else urlparse(p.url).hostname==urlparse(HOME).hostname)),None)
+                page=next((p for p in context.pages if p.url.split('?')[0]==HOME),None)
                 if page is None:
                     page=await context.new_page();await page.goto(HOME,wait_until='domcontentloaded')
             else:
@@ -44,7 +44,7 @@ async def main():
                 try:
                     # Login readiness requires the composer and absence of a login form.
                     composer=composer_for(page)
-                    if PROVIDER=='claude':require_bound_chat(page.url,HOME)
+                    require_bound_chat(page.url,HOME,PROVIDER)
                     text=await page.locator('body').inner_text()
                     login=any(s in text.lower() for s in ['log in to deepseek','войти в deepseek','sign in to continue','вход в deepseek'])
                     if PROVIDER=='zai' and '\nSign in\n' in '\n'+text+'\n':login=True
@@ -62,32 +62,33 @@ async def main():
                 await asyncio.sleep(.5)
 
 async def execute(page,task,post):
-    content='';submitted=False;last_content='';stable_since=None
+    content='';submitted=False;last_content='';stable_since=None;actual_model=None
     async def save(status='running',error=None):
-        return await post(f'tasks/{task["id"]}/update',{'runner_id':RUNNER,'provider':PROVIDER,'content':content,'status':status,'error':error,'source_url':page.url if submitted and (PROVIDER=='claude' or page.url!=HOME) else None})
+        return await post(f'tasks/{task["id"]}/update',{'runner_id':RUNNER,'provider':PROVIDER,'content':content,'status':status,'error':error,'source_url':page.url if submitted else None,'actual_model':actual_model})
     try:
         state=await save()
         if state['cancel_requested']:await save('cancelled');return
         old_composer=composer_for(page)
         if await old_composer.is_visible() and (await draft_value(old_composer)).strip():raise RuntimeError('В поле есть черновик. Он сохранён, задача не отправлялась.')
-        if PROVIDER=='claude':require_bound_chat(page.url,HOME)
-        else:await page.goto(HOME,wait_until='domcontentloaded')
+        require_bound_chat(page.url,HOME,PROVIDER)
+        if PROVIDER=='claude':actual_model=(await page.locator('[data-testid="model-selector-dropdown"]').inner_text())[:200]
         if PROVIDER=='deepseek':
             body=(await page.locator('body').inner_text()).lower()
             if any(s in body for s in ['something went wrong','ошибка загрузки']):await page.reload(wait_until='domcontentloaded')
         composer=composer_for(page)
-        baseline=await page.locator('[data-testid="assistant-message"]').count() if PROVIDER=='claude' else 0
+        selector='[data-testid="assistant-message"] .font-claude-response' if PROVIDER=='claude' else '.ds-markdown' if PROVIDER=='deepseek' else '[id="response-content-container"]'
+        baseline=await page.locator(selector).count()
+        old_controls=await page.locator('.regenerate-response-button').count() if PROVIDER=='zai' else await page.get_by_role('button',name='Читать вслух').count() if PROVIDER=='deepseek' else 0
         if (await draft_value(composer)).strip():raise RuntimeError('В поле обнаружен черновик. Отправка остановлена.')
         await composer.fill(task['prompt'])
-        if PROVIDER=='claude':require_bound_chat(page.url,HOME)
+        require_bound_chat(page.url,HOME,PROVIDER)
         await composer.press('Enter');submitted=True
         deadline=time.monotonic()+600
         while time.monotonic()<deadline:
             # Provider-specific answer containers; never copy user prompts or reasoning.
-            if PROVIDER=='claude':require_bound_chat(page.url,HOME)
-            selector='[data-testid="assistant-message"] .font-claude-response' if PROVIDER=='claude' else '.ds-markdown' if PROVIDER=='deepseek' else '[id="response-content-container"]'
+            require_bound_chat(page.url,HOME,PROVIDER)
             nodes=page.locator(selector)
-            fresh=PROVIDER!='claude' or await page.locator('[data-testid="assistant-message"]').count()>baseline
+            fresh=await nodes.count()>baseline
             if fresh and await nodes.count():
                 candidate=await nodes.last.evaluate(EXTRACT_MARKDOWN)
                 if candidate!=last_content:last_content=candidate;stable_since=time.monotonic()
@@ -99,7 +100,7 @@ async def execute(page,task,post):
                 await save('cancelled');return
             stop_visible=await page.get_by_role('button',name='Stop',exact=True).is_visible()
             # Require a visible finished response control plus stable final content.
-            controls=await page.locator('[data-testid="assistant-message"]').last.locator('xpath=../..').locator('[data-testid="action-bar-copy"]').count() if PROVIDER=='claude' and fresh else 0 if PROVIDER=='claude' else await page.locator('.regenerate-response-button').count() if PROVIDER=='zai' else await page.get_by_role('button',name='Читать вслух').count()
+            controls=await page.locator('[data-testid="assistant-message"]').last.locator('xpath=../..').locator('[data-testid="action-bar-copy"]').count() if PROVIDER=='claude' and fresh else 0 if PROVIDER=='claude' else (await page.locator('.regenerate-response-button').count()>old_controls) if PROVIDER=='zai' else (await page.get_by_role('button',name='Читать вслух').count()>old_controls)
             if content and controls and not stop_visible and stable_since and time.monotonic()-stable_since>3:
                 await save('completed');print(PROVIDER,task['id'],'completed',flush=True);return
             await asyncio.sleep(2)

@@ -14,5 +14,11 @@ try{
         Write-Host 'Chrome портала уже открыт.';exit 0
     }
 }catch{if($_.Exception.Message -like '*занят другим браузером*'){throw}}
-Start-Process -FilePath $portalChrome -ArgumentList @('--remote-debugging-address=127.0.0.1','--remote-debugging-port=19222',('--user-data-dir="'+$portalProfile+'"'),'--no-first-run','--no-default-browser-check','https://chat.deepseek.com/','https://chat.z.ai/') -WindowStyle Normal
+$portalChatUrls=@()
+foreach($portalProvider in @('deepseek','zai','claude','kimi')){
+    $portalBinding=Join-Path $PSScriptRoot ('.sites-runtime\'+$portalProvider+'-chat.json')
+    if(Test-Path -LiteralPath $portalBinding){$portalChatUrls+=(Get-Content -Raw -LiteralPath $portalBinding | ConvertFrom-Json).url}
+}
+if(-not $portalChatUrls.Count){$portalChatUrls=@('https://chat.deepseek.com/','https://chat.z.ai/')}
+Start-Process -FilePath $portalChrome -ArgumentList (@('--remote-debugging-address=127.0.0.1','--remote-debugging-port=19222',('--user-data-dir="'+$portalProfile+'"'),'--no-first-run','--no-default-browser-check')+$portalChatUrls) -WindowStyle Normal
 Write-Host 'Открыл обычный Chrome с отдельным профилем портала. Сначала войдите в сервисы вручную, затем запустите start-python-bridge.ps1.'
