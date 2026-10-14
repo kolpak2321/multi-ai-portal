@@ -1,7 +1,7 @@
 FROM mcr.microsoft.com/playwright/python:v1.58.0-noble
 WORKDIR /app
 RUN pip install --index-url https://pypi.org/simple --no-cache-dir playwright==1.58.0 httpx==0.28.1 && apt-get update && apt-get install -y --no-install-recommends xvfb x11vnc novnc websockify && rm -rf /var/lib/apt/lists/* && mkdir /profiles && chown pwuser:pwuser /profiles
-COPY browser_worker.py answer_markdown.js ./
+COPY browser_worker.py answer_markdown.js fixed_chat.py ./
 COPY browser-entrypoint.sh .
 USER pwuser
 ENV DISPLAY=:99 HEADLESS=false
