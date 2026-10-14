@@ -77,5 +77,5 @@ while(!shuttingDown) {
     await request('bridge/heartbeat',{connected,note:connected?'Подписка ChatGPT подключена через Codex':'Войдите в Codex через ChatGPT'});
     if(connected){const result=await request('bridge/claim',{runner_id:runnerId});if(result.task){await execute(result.task);continue;}}
   } catch {console.log('Ожидаем локальный сервер портала…');}
-  await sleep(2000);
+  await sleep(500);
 }
