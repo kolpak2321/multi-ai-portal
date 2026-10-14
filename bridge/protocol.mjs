@@ -1,5 +1,5 @@
 export function buildArgs(work) {
-  const args=['--no-daemon','-a','never','exec','--ignore-user-config','--skip-git-repo-check','--ephemeral','--sandbox','read-only','--json','--color','never','-C',work,
+  const args=['--no-daemon','-a','never','exec','--model','gpt-5.6-luna','--ignore-user-config','--skip-git-repo-check','--ephemeral','--sandbox','read-only','--json','--color','never','-C',work,
     '-c','forced_login_method="chatgpt"','-c','web_search="live"','-c','model_reasoning_effort="low"','-c','project_doc_max_bytes=0'];
   for(const feature of ['shell_tool','unified_exec','multi_agent','apps','plugins','hooks','computer_use','browser_use','view_image','image_generation','memories']) args.push('--disable',feature);
   args.push('-');return args;

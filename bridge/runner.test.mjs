@@ -7,6 +7,7 @@ test('forces subscription authentication, enables search and excludes writes',()
   assert.ok(args.includes('forced_login_method="chatgpt"'));
   assert.ok(args.includes('web_search="live"'));
   assert.ok(args.includes('model_reasoning_effort="low"'));
+  assert.equal(args[args.indexOf('--model')+1],'gpt-5.6-luna');
   assert.equal(args[args.indexOf('--sandbox')+1],'read-only');
   assert.ok(!args.includes('--dangerously-bypass-approvals-and-sandbox'));
   assert.ok(args.includes('--no-daemon'));

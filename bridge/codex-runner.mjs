@@ -42,7 +42,7 @@ async function execute(task) {
   let persist=Promise.resolve();
   function save(status='running') {
     persist=persist.then(async()=>{
-      const state=await request(`bridge/tasks/${task.id}/update`,{runner_id:runnerId,content,status,error});
+      const state=await request(`bridge/tasks/${task.id}/update`,{runner_id:runnerId,content,status,error,actual_model:'GPT-5.6 Luna · Low'});
       if(state.cancel_requested && !stopped) {stopped=true;activeChild.kill();}
     }).catch(()=>{});
     return persist;
