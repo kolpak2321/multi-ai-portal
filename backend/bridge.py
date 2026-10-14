@@ -69,7 +69,7 @@ async def update(task_id:UUID,body:Update,request:Request):
         from urllib.parse import urlparse
         parsed=urlparse(body.source_url)
         domain={'deepseek':'chat.deepseek.com','zai':'chat.z.ai','openai':'chatgpt.com','claude':'claude.ai','kimi':'www.kimi.com'}[body.provider]
-        if parsed.scheme!='https' or parsed.hostname!=domain:raise HTTPException(400,'Неверная ссылка на диалог')
+        if parsed.scheme!='https' or parsed.hostname not in (('www.kimi.ai','www.kimi.com') if body.provider=='kimi' else (domain,)):raise HTTPException(400,'Неверная ссылка на диалог')
     pool=request.app.state.pool
     async with pool.acquire() as conn:
         async with conn.transaction():

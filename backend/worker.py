@@ -4,6 +4,7 @@ import logging
 import time
 from db import connect
 from demo import demo_answer
+from history_cleanup import cleanup_history
 
 logging.basicConfig(level=logging.INFO,format='%(asctime)s %(levelname)s %(message)s')
 log=logging.getLogger('portal')
@@ -53,9 +54,16 @@ async def recover_stale(conn):
         await conn.execute("UPDATE answers SET status='interrupted',error='Обработчик был перезапущен. Сохранённая часть ответа осталась в истории; автоматического повтора не было.',finished_at=now() WHERE task_id=$1 AND status IN ('queued','running')",row['id'])
 
 async def main():
-    pool=await connect();log.info('Worker ready: demonstration queue and interrupted-task recovery')
+    pool=await connect();log.info('Worker ready: demonstration queue, recovery, Saturday 04:00 Asia/Tomsk history cleanup')
+    last_cleanup_check=0
     try:
         while True:
+            if time.monotonic()-last_cleanup_check>30:
+                try:
+                    removed=await cleanup_history(pool)
+                    if removed:log.info('Weekly portal history cleanup: %s tasks removed',removed)
+                    last_cleanup_check=time.monotonic()
+                except Exception:log.exception('History cleanup failed; will retry')
             async with pool.acquire() as conn:
                 async with conn.transaction():
                     await recover_stale(conn)

@@ -4,6 +4,12 @@ CREATE TABLE IF NOT EXISTS subscription_bridges (
     note text NOT NULL DEFAULT '',
     seen_at timestamptz NOT NULL DEFAULT now()
 );
+CREATE TABLE IF NOT EXISTS portal_maintenance (
+    name text PRIMARY KEY,
+    last_slot timestamptz NOT NULL,
+    last_run_at timestamptz,
+    deleted_tasks integer NOT NULL DEFAULT 0
+);
 ALTER TABLE answers ADD COLUMN IF NOT EXISTS source_url text;
 CREATE TABLE IF NOT EXISTS subscription_claims (
     task_id uuid PRIMARY KEY REFERENCES tasks(id) ON DELETE CASCADE,

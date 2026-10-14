@@ -17,10 +17,11 @@ CDP=os.getenv('PORTAL_CDP_URL')
 EXTRACT_MARKDOWN=Path(__file__).with_name('answer_markdown.js').read_text(encoding='utf-8')
 
 def composer_for(page):
+    if PROVIDER=='kimi':return page.locator('.chat-input-editor[contenteditable="true"]')
     return page.locator('[data-testid="chat-input"]') if PROVIDER=='claude' else page.locator('textarea').last
 
 async def draft_value(composer):
-    return await composer.inner_text() if PROVIDER=='claude' else await composer.input_value()
+    return await composer.inner_text() if PROVIDER in ('claude','kimi') else await composer.input_value()
 
 async def main():
     header='X-Portal-Bridge' if os.getenv('PORTAL_USE_PROXY') else 'X-Portal-Token'
@@ -76,7 +77,7 @@ async def execute(page,task,post):
             body=(await page.locator('body').inner_text()).lower()
             if any(s in body for s in ['something went wrong','ошибка загрузки']):await page.reload(wait_until='domcontentloaded')
         composer=composer_for(page)
-        selector='[data-testid="assistant-message"] .font-claude-response' if PROVIDER=='claude' else '.ds-markdown' if PROVIDER=='deepseek' else '[id="response-content-container"]'
+        selector='.segment-assistant .markdown-container:not(.toolcall-content-text) > .markdown' if PROVIDER=='kimi' else '[data-testid="assistant-message"] .font-claude-response' if PROVIDER=='claude' else '.ds-markdown' if PROVIDER=='deepseek' else '[id="response-content-container"]'
         baseline=await page.locator(selector).count()
         old_controls=await page.locator('.regenerate-response-button').count() if PROVIDER=='zai' else await page.get_by_role('button',name='Читать вслух').count() if PROVIDER=='deepseek' else 0
         if (await draft_value(composer)).strip():raise RuntimeError('В поле обнаружен черновик. Отправка остановлена.')
@@ -101,6 +102,7 @@ async def execute(page,task,post):
             stop_visible=await page.get_by_role('button',name='Stop',exact=True).is_visible()
             # Require a visible finished response control plus stable final content.
             controls=await page.locator('[data-testid="assistant-message"]').last.locator('xpath=../..').locator('[data-testid="action-bar-copy"]').count() if PROVIDER=='claude' and fresh else 0 if PROVIDER=='claude' else (await page.locator('.regenerate-response-button').count()>old_controls) if PROVIDER=='zai' else (await page.get_by_role('button',name='Читать вслух').count()>old_controls)
+            if PROVIDER=='kimi':controls=fresh and await page.locator('.segment-assistant').last.locator('svg[name="Refresh"]').count()>0
             if content and controls and not stop_visible and stable_since and time.monotonic()-stable_since>3:
                 await save('completed');print(PROVIDER,task['id'],'completed',flush=True);return
             await asyncio.sleep(2)
